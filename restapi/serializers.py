@@ -3,14 +3,15 @@ from app.models import User,Loan
 from datetime import datetime
 from django.contrib.auth import authenticate
 class UserSerializer(serializers.HyperlinkedModelSerializer):
-    
+
+   
     class Meta:
         model = User
-        fields = ['url','id_card','first_name','last_name','email','picture','money']
+        fields = ['url','id_card','username','first_name','last_name','email','picture','money']
         read_only_fields = ['money','id_card','email']
 
 
-class LoginSerializer(serializers.Serializer):
+class UserLoginSerializer(serializers.Serializer):
 
     id_card = serializers.IntegerField()
     password = serializers.CharField(
@@ -50,10 +51,12 @@ class RequestLoanSerializer(serializers.HyperlinkedModelSerializer):
     
 
 class UserVerify(serializers.Serializer):
-    idCard = serializers.IntegerField()
-
+    idCard = serializers.IntegerField(required=True)
+    password = serializers.CharField(style={'input_type': 'password'})
 
     def validate(self,data):
+        if len(str(data['idCard']))!=8:
+            raise serializers.ValidationError('INVALID ID CARD')
         if User.objects.filter(id_card=data['idCard']).exists():
             raise serializers.ValidationError('THIS ID CARD ALREADY EXISTS')
         return data

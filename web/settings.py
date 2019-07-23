@@ -32,6 +32,7 @@ ALLOWED_HOSTS = ['loanerexchange.com','localhost']
 
 INSTALLED_APPS = [
     'restapi',
+    'drf_yasg',
     #'social_django',
    # 'social_django_mongoengine',
     'app.apps.AppConfig',
@@ -108,8 +109,9 @@ DATABASES = {
 
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10
+    'PAGE_SIZE': 10,
 }
+
 # Password validation
 # https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators
 
@@ -153,6 +155,14 @@ STATICFILES_DIRS = [
 ]
 MEDIA_ROOT = 'media/'
 MEDIA_URL = '/MEDIA/'
+
+# DJANGO EMAIL SETTINGS
+EMAIL_USE_TLS = True
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_PASSWORD = 'ham6842179530'
+EMAIL_HOST_USER = 'bouissihamza6@gmail.com'
+EMAIL_PORT = 587
+
 
 
 # DJANGO AUTH SETTINGS

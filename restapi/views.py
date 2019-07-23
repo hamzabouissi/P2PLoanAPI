@@ -47,25 +47,30 @@ class IsAuthenticated(permissions.BasePermission):
 # USER INFORTMATIONS 
 
 class UserViewSet(viewsets.ModelViewSet):
-
-    queryset = User.objects.all()
     serializer_class = serializers.UserSerializer
+    queryset = User.objects.all()
     permission_classes = [IsAuthenticated,]
-
-class UserDetail(generics.RetrieveUpdateDestroyAPIView):
-
-    queryset = User.objects.all()
-    serializer_class = serializers.UserSerializer
-    permission_classes  = [IsAuthenticated,IsOwnerOrReadOnly]
+    permission_classes_by_action = {'retrieve': [IsAuthenticated,IsOwnerOrReadOnly],
+                                    'create':[IsOwnerOrReadOnly,permissions.IsAdminUser],
+                                    'update':[IsOwnerOrReadOnly],
+                                    'destroy':[IsOwnerOrReadOnly],
+                                    }
+    
+    def get_permissions(self):
+        try:
+            # return permission_classes depending on `action` 
+            return [permission() for permission in self.permission_classes_by_action[self.action]]
+        except KeyError: 
+            # action is not set return default permission_classes
+            return [permission() for permission in self.permission_classes]
 
 
 # AUTHENTICATIONS VIEWS 
 
 class Login(mixins.CreateModelMixin, generics.GenericAPIView):
 
-    serializer_class = serializers.LoginSerializer
-    renderer_classes = [TemplateHTMLRenderer]
-    template_name = 'LoginPage.html'
+    serializer_class = serializers.UserLoginSerializer
+   
     # Remove this during development
     def get(self,request):
         return Response()
@@ -89,16 +94,19 @@ class VerifyYourself(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated,]
 
     def get(self, request, *args, **kwargs):
-        return Response('verify Your ID CARD')
-
+        if not request.user.id_card:
+            return Response('Verify Yourself')  
+        return redirect('user-detail',request.user.id)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         request.user.id_card = serializer.validated_data['idCard']
+        if serializer.data['password']:
+            request.user.set_password(serializer.validated_data['password'])
         request.user.save()
         headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        return redirect('user-detail',request.user.id)
 
 
 # User Functionalities
@@ -134,7 +142,6 @@ class Accept(generics.RetrieveUpdateDestroyAPIView):
 @decorators.api_view(['GET',])
 @decorators.permission_classes([IsAuthenticated])
 def Loans(request,loan,loans_type):
-    print(request.user.id_card)
     state = {'accepted':True,'waiting':False}
     if loan=='requested':
         serializer = serializers.RequestLoanSerializer(request.user.loan_receiver.filter(accepted=state[loans_type]),many=True,context={'request':request})

@@ -6,6 +6,7 @@ from django.contrib.auth.models import (
 )
 from django.utils.translation import gettext_lazy as _
 import uuid
+from django.contrib.auth.validators import UnicodeUsernameValidator
 
 class MyUserManager(BaseUserManager):
     def create_user(self,email,password,**extra_field):
@@ -41,12 +42,23 @@ class MyUserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser,PermissionsMixin):
+
+    username_validator = UnicodeUsernameValidator()
+
+
     email = models.EmailField(
         verbose_name='email address',
         max_length=255,
         unique=True,
     )
-    
+    username = models.CharField(
+        _('username'),
+        max_length=150,
+        null=True,
+        help_text=_('Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.'),
+        validators=[username_validator],
+        
+    )
     id_card = models.PositiveIntegerField(null=True,default=None)
     picture = models.ImageField(upload_to='users_pic',null=True)
     first_name=models.CharField(max_length=25)

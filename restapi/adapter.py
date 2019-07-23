@@ -1,12 +1,9 @@
 from allauth.socialaccount.adapter import DefaultSocialAccountAdapter
-import os,urllib
-from django.conf import settings
+import requests
 
+from django.core.files import File
+from tempfile import NamedTemporaryFile
 
-def downloader(image_url,username):
-
-    
-    urllib.request.urlretrieve(image_url,username)
 
 class CustomSocialAdapter(DefaultSocialAccountAdapter):
 
@@ -18,11 +15,15 @@ class CustomSocialAdapter(DefaultSocialAccountAdapter):
         """
         u = sociallogin.user
         info = sociallogin.serialize()
+        url = info['account']['extra_data']['avatar_url']
+        file_name = info['account']['provider'] + info['account']['extra_data']['name' ] + '.jpg'
         if info['account']['provider']=='github':
-            url = os.path.join(settings.BASE_DIR, settings.MEDIA_ROOT)
-            file_name = url + info['account']['provider'] + info['account']['extra_data']['name' ] + '.jpg'
-            downloader(info['account']['extra_data']['avatar_url'] , file_name)
-            u.picture = file_name
+            if not u.picture:
+                with NamedTemporaryFile(delete=True) as img_temp:
+                    r = requests.get(url)
+                    img_temp.write(r.content)
+                    img_temp.flush()
+                    u.picture.save(file_name,File(img_temp),save=True)
         super().save_user(request,sociallogin,form)
    
 
