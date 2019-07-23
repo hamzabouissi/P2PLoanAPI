@@ -6,7 +6,7 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
     
     class Meta:
         model = User
-        fields = ['url','id_card','first_name','last_name','email','password','picture','money']
+        fields = ['url','id_card','first_name','last_name','email','picture','money']
         read_only_fields = ['money','id_card','email']
 
 
@@ -28,10 +28,15 @@ class GiverLoanSerializer(serializers.HyperlinkedModelSerializer):
     
     class Meta:
         model = Loan
-        fields = ['url','accepted','receiver','length','amount']
-        read_only_fields = ['receiver','length','amount','loaned_at']
-    
+        fields = ['url','accepted','receiver','length','amount','loaned_at']
+        read_only_fields = ['receiver','length',]
 
+    
+    def validate(self,data):
+        giver = self.__dict__['_args'][0].giver
+        if data['amount']>=giver.money:
+            raise serializers.ValidationError('Current money not enough,recharge your account!')
+        return data
 
 
 class RequestLoanSerializer(serializers.HyperlinkedModelSerializer):

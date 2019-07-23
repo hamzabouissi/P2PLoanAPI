@@ -56,7 +56,7 @@ class UserDetail(generics.RetrieveUpdateDestroyAPIView):
 
     queryset = User.objects.all()
     serializer_class = serializers.UserSerializer
-    permission_classes  = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes  = [IsAuthenticated,IsOwnerOrReadOnly]
 
 
 # AUTHENTICATIONS VIEWS 
@@ -126,6 +126,7 @@ class Accept(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [LoanOwner,IsAuthenticated]
     queryset = Loan.objects.filter(accepted=False)
     serializer_class = serializers.GiverLoanSerializer
+
 
 
     # THIS VIEW DISPLAY LOANS (ACCEPTED || WAITING) THAT WHERE REQUESTED TO THE CURRENT USER
