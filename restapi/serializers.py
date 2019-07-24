@@ -9,6 +9,9 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
         model = User
         fields = ['url','id_card','username','first_name','last_name','email','picture','money']
         read_only_fields = ['money','id_card','email']
+        extra_kwargs = {
+            "url":{'lookup_field':"id_card"}
+        }
 
 
 class UserLoginSerializer(serializers.Serializer):
@@ -29,10 +32,13 @@ class GiverLoanSerializer(serializers.HyperlinkedModelSerializer):
     
     class Meta:
         model = Loan
-        fields = ['url','accepted','receiver','length','amount','loaned_at']
-        read_only_fields = ['receiver','length',]
-
-    
+        fields = ['url','giver_acceptance','receiver','length','amount','description','final_amount']
+        read_only_fields = ['receiver','length','description','receiver_acceptance']
+        extra_kwargs = {
+                "receiver":{'lookup_field':"id_card"}
+            }
+        
+        
     def validate(self,data):
         giver = self.__dict__['_args'][0].giver
         if data['amount']>=giver.money:
@@ -46,9 +52,11 @@ class RequestLoanSerializer(serializers.HyperlinkedModelSerializer):
     
     class Meta:
         model = Loan
-        fields = ['url','giver','receiver','length','amount']
-        read_only_fields = ['accepted','receiver']
-    
+        fields = ['url','giver','receiver_acceptance','length','amount','description','receiver']
+        read_only_fields = ['giver_acceptance','giver','final_amount']
+        extra_kwargs = {
+            "giver":{'lookup_field':"id_card"}
+        }
 
 class UserVerify(serializers.Serializer):
     idCard = serializers.IntegerField(required=True)

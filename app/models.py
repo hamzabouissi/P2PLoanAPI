@@ -7,7 +7,7 @@ from django.contrib.auth.models import (
 from django.utils.translation import gettext_lazy as _
 import uuid
 from django.contrib.auth.validators import UnicodeUsernameValidator
-
+from django.core.validators import MaxValueValidator,MinValueValidator 
 class MyUserManager(BaseUserManager):
     def create_user(self,email,password,**extra_field):
         """
@@ -59,7 +59,8 @@ class User(AbstractBaseUser,PermissionsMixin):
         validators=[username_validator],
         
     )
-    id_card = models.PositiveIntegerField(null=True,default=None)
+    
+    id_card = models.PositiveIntegerField(null=True,default=None,validators=[MinValueValidator(10000000),MaxValueValidator(19999999)])
     picture = models.ImageField(upload_to='users_pic',null=True)
     first_name=models.CharField(max_length=25)
     last_name=models.CharField(max_length=25)
@@ -80,6 +81,8 @@ class User(AbstractBaseUser,PermissionsMixin):
     def __str__(self):
         return f"MR {self.first_name} "
 
+
+ 
    
 
 
@@ -88,16 +91,23 @@ class Loan(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     giver = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='loan_giver', on_delete=models.CASCADE)
     receiver = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='loan_receiver', on_delete=models.CASCADE)
-    loaned_at = models.DateTimeField(auto_now_add=True)        
+    description = models.TextField(max_length=200,default='')
     length = models.PositiveSmallIntegerField()
     amount = models.PositiveIntegerField(blank=False)
-    accepted = models.BooleanField(default=False)
+    #accepted = models.BooleanField(default=False)
+    giver_acceptance = models.BooleanField(default=False)
+    receiver_acceptance = models.BooleanField(default=False)
+    final_amount = models.PositiveIntegerField(default=0) # THIS FIELD DESCRIBE FINAL AMOUNT TO RETURN TO THE BORROWER
+    
+    loaned_at = models.DateTimeField(auto_now_add=True)        
+    next_payment = models.DateField(blank=True,null=True)
 
     def save(self, *args, **kwargs):
         # CHECK USER GIVER MONEY
-        if self.accepted and self.giver.money>=self.amount:
+        if self.giver_acceptance and self.receiver_acceptance and self.giver.money>=self.amount:
             self.exchange()
-          # Call the "real" save() method.
+
+        # Call the "real" save() method.
         super().save(*args,**kwargs)
         
     # TRANSER MONEY
