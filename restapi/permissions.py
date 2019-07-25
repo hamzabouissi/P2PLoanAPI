@@ -38,3 +38,14 @@ class hasNoContraints(permissions.BasePermission):
         # Read permissions are allowed to any request,
         # so we'll always allow GET, HEAD or OPTIONS requests.
         return  not Loan.objects.filter(Q(giver=request.user)|Q(receiver=request.user)).exists()
+
+
+
+class TrackOwer(permissions.BasePermission):
+
+   def has_object_permission(self, request, view, obj):
+        # Read permissions are allowed to any request,
+        # so we'll always allow GET, HEAD or OPTIONS requests.
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return obj.loan.giver == request.user and not obj.received

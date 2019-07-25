@@ -2,7 +2,7 @@ from django.shortcuts import render
 
 # Create your views here.
 from rest_framework import viewsets,mixins,generics, permissions,status,decorators
-from app.models import User,Loan
+from app.models import User,Loan,Track
 from restapi import serializers 
 from rest_framework.views import APIView
 from rest_framework.renderers import TemplateHTMLRenderer
@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from django.contrib.auth import authenticate,login
 from rest_framework.renderers import TemplateHTMLRenderer
 from django.shortcuts import redirect
-from restapi.permissions import IsOwnerOrReadOnly,IsAuthenticated,LoanOwner,hasNoContraints
+from restapi.permissions import IsOwnerOrReadOnly,IsAuthenticated,LoanOwner,hasNoContraints,TrackOwer
 
 
 
@@ -121,13 +121,37 @@ class Accept(generics.RetrieveUpdateDestroyAPIView):
     '''
         ACCEPT OR DESTROY A LOAN
     '''
-    permission_classes = [LoanOwner,IsAuthenticated]
-    queryset = Loan.objects.filter(receiver_acceptance=True,giver_acceptance=False) # PREVENT USER FROM ACCEPT TWICE THE SAME CONTRAINT
+    permission_classes = [IsAuthenticated]
+    queryset = Loan.objects.filter(receiver_acceptance=False) # PREVENT USER FROM ACCEPT TWICE THE SAME CONTRAINT
     serializer_class = serializers.GiverLoanSerializer
 
+    def get_serializer(self, *args, **kwargs):
+        """
+        Return the serializer instance that should be used for validating and
+        deserializing input, and for serializing output.
+        """
+        obj = self.get_object()
+        if self.request.user == obj.receiver:
+           
+            serializer_class = serializers.ReceiverAcceptanceSerializer
+        else:
+            serializer_class = self.get_serializer_class()
+        kwargs['context'] = self.get_serializer_context()
+        return serializer_class(*args, **kwargs)
 
 
-    # THIS VIEW DISPLAY LOANS (ACCEPTED || WAITING) THAT WHERE REQUESTED TO THE CURRENT USER
+class LoanDetail(generics.RetrieveAPIView):
+    '''
+        THIS VIEW SHOW THE HISRTORY OF CURRENT LOAN
+    '''
+    queryset = Loan.objects.all()
+    serializer_class = serializers.LoanSerializer
+
+
+
+
+
+# THIS VIEW DISPLAY LOANS (ACCEPTED || WAITING) THAT WHERE REQUESTED TO THE CURRENT USER
 
 @decorators.api_view(['GET',])
 @decorators.permission_classes([IsAuthenticated])
@@ -137,10 +161,19 @@ def Loans(request,loan,loans_type):
     '''
     state = {'accepted':True,'waiting':False}
     if loan=='requested':
-        serializer = serializers.RequestLoanSerializer(request.user.loan_receiver.filter(receiver_acceptance=state[loans_type],giver_acceptance=state[loans_type]),many=True,context={'request':request})
+        serializer = serializers.RequestLoanSerializer(request.user.loan_receiver.filter(giver_acceptance=state[loans_type]),many=True,context={'request':request})
     else:
         serializer = serializers.GiverLoanSerializer(request.user.loan_giver.filter(receiver_acceptance=state[loans_type],giver_acceptance=state[loans_type]),many=True,context={'request':request})
     return Response(serializer.data)
 
 
 
+
+# TRACKS 
+class TrackDetail(generics.RetrieveUpdateAPIView):
+    '''
+        THIS VIEW TO TRACK LOAN HISTORY
+    '''
+    serializer_class = serializers.TrackSerializer
+    queryset  = Track.objects.all()
+    permission_classes = [TrackOwer,]

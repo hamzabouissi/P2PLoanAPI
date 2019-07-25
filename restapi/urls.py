@@ -11,9 +11,10 @@ urlpatterns = [
     path('Login',views.Login.as_view()),
     path('GithubAuth',views.GithubAuth),
 
-
+    path('Loan/<str:pk>',views.LoanDetail.as_view(),name='loan-detail'),
     path('request',views.Request.as_view()),
-    path('accept/<str:pk>',views.Accept.as_view(),name='loan-detail'),
+    path('accept/<str:pk>',views.Accept.as_view(),name='loans-detail'),
     path('VerifyYourself',views.VerifyYourself.as_view()),
     re_path(r'^(?P<loan>(requested|received))/(?P<loans_type>(accepted|waiting))/$',views.Loans,name='Loans'),
+    path('track/<int:pk>',views.TrackDetail.as_view(),name='track-detail'),
 ] + router.urls
