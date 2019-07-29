@@ -1,0 +1,66 @@
+version: "3"
+
+services:  
+  # PostgreSQL database
+  db:
+    image: postgres:11-alpine
+    hostname: db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+    ports:
+      - "5432:5432"
+
+  # Redis
+  redis:
+    image: redis:5.0-alpine
+    hostname: redis
+    ports:
+      - "6379:6379"
+
+  # RabbitMQ
+  rabbit:
+    hostname: rabbit
+    image: rabbitmq:3.7-alpine
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=mypass
+    ports:
+      - "5672:5672"  # we forward this port because it's useful for debugging
+      - "15672:15672"  # here, we can access rabbitmq management plugin
+
+  # Django web server
+  web:
+    container_name: rest-api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    hostname: web
+    command: ./run_web.sh
+    volumes:
+      - .:/app  # mount current directory inside container
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      - db
+
+  # Celery worker
+  worker:
+    container_name: celery-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ./run_celery.sh
+    volumes:
+      - .:/app
+    links:
+      - rabbit
+    ports:
+      - "4567:4567"
+    depends_on:
+      - rabbit
+
+volumes:
+  app:

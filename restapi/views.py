@@ -2,7 +2,7 @@ from django.shortcuts import render
 
 # Create your views here.
 from rest_framework import viewsets,mixins,generics, permissions,status,decorators
-from app.models import User,Loan,Track
+from app.models import User,Loan,Track,Citizien
 from restapi import serializers 
 from rest_framework.views import APIView
 from rest_framework.renderers import TemplateHTMLRenderer
@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from django.contrib.auth import authenticate,login
 from rest_framework.renderers import TemplateHTMLRenderer
 from django.shortcuts import redirect
-from restapi.permissions import IsOwnerOrReadOnly,IsAuthenticated,LoanOwner,hasNoContraints,TrackOwer
+from restapi.permissions import IsOwnerOrReadOnly,IsAuthenticated,LoanOwner,hasNoContraints,TrackOwner
 
 
 
@@ -25,7 +25,6 @@ class UserViewSet(viewsets.ModelViewSet):
     '''
     serializer_class = serializers.UserSerializer
     queryset = User.objects.all()
-    lookup_field = 'id_card'
     permission_classes = [IsAuthenticated,]
     permission_classes_by_action = {'retrieve': [IsAuthenticated,IsOwnerOrReadOnly],
                                     'create':[IsOwnerOrReadOnly,permissions.IsAdminUser],
@@ -44,6 +43,11 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 # AUTHENTICATIONS VIEWS 
+class Registration(generics.CreateAPIView):
+
+    serializer_class  = serializers.UserRegistrationSerializer
+    queryset = Citizien.objects.all()
+
 
 class Login(mixins.CreateModelMixin, generics.GenericAPIView):
     '''
@@ -60,7 +64,6 @@ class Login(mixins.CreateModelMixin, generics.GenericAPIView):
         serializer = self.serializer_class(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data
-        print(user)
         login(request,user)
         return Response(status=status.HTTP_202_ACCEPTED)
 
@@ -81,20 +84,19 @@ class VerifyYourself(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated,]
 
     def get(self, request, *args, **kwargs):
-        if not request.user.id_card:
+        if not request.user.is_valid_profile:
             return Response('Verify Yourself')  
         # REDICRECT VERIFIED USER TO PROFILE PAGE
-        return redirect('user-detail',request.user.id_card)
+        return redirect('user-detail',request.user.id)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        request.user.id_card = serializer.validated_data['idCard']
-        if serializer.data['password']:
-            request.user.set_password(serializer.validated_data['password'])
+        serializer.save()
+        request.user.is_valid_profile=True
         request.user.save()
         headers = self.get_success_headers(serializer.data)
-        return redirect('user-detail',request.user.id_card)
+        return redirect('user-detail',request.user.id)
     
    
 
@@ -176,4 +178,4 @@ class TrackDetail(generics.RetrieveUpdateAPIView):
     '''
     serializer_class = serializers.TrackSerializer
     queryset  = Track.objects.all()
-    permission_classes = [TrackOwer,]
+    permission_classes = [TrackOwner,]

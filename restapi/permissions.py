@@ -1,6 +1,11 @@
 from rest_framework import permissions
 from django.db.models import Q
 from app.models import Loan
+from django.core.exceptions import ObjectDoesNotExist
+
+
+
+
 
 class IsOwnerOrReadOnly(permissions.BasePermission):
     """
@@ -12,7 +17,7 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
         # so we'll always allow GET, HEAD or OPTIONS requests.
         if request.method in permissions.SAFE_METHODS:
             return True
-        return obj.id_card == request.user.id_card
+        return obj.email == request.user.email
 
 class LoanOwner(permissions.BasePermission):
     """
@@ -28,10 +33,11 @@ class LoanOwner(permissions.BasePermission):
 
     
 class IsAuthenticated(permissions.BasePermission):
-     def has_permission(self, request,view):
+    
+    def has_permission(self, request,view):
         # Read permissions are allowed to any request,
         # so we'll always allow GET, HEAD or OPTIONS requests.
-        return request.user.is_authenticated and request.user.id_card is not None
+        return request.user.is_authenticated and request.user.is_valid_profile
 
 class hasNoContraints(permissions.BasePermission):
      def has_permission(self, request,view):
@@ -41,7 +47,7 @@ class hasNoContraints(permissions.BasePermission):
 
 
 
-class TrackOwer(permissions.BasePermission):
+class TrackOwner(permissions.BasePermission):
 
    def has_object_permission(self, request, view, obj):
         # Read permissions are allowed to any request,

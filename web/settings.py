@@ -34,7 +34,7 @@ INSTALLED_APPS = [
     'restapi',
     'drf_yasg',
     #'social_django',
-   # 'social_django_mongoengine',
+    # 'social_django_mongoengine',
     'app.apps.AppConfig',
     'rest_framework',
     'rest_framework.authtoken',
@@ -179,7 +179,6 @@ SOCIALACCOUNT_ADAPTER = "restapi.adapter.CustomSocialAdapter"
 AUTHENTICATION_BACKENDS = (
     # Needed to login by username in Django admin, regardless of `allauth`
     'django.contrib.auth.backends.ModelBackend',
-
     # `allauth` specific authentication methods, such as login by e-mail
     'allauth.account.auth_backends.AuthenticationBackend',
  
@@ -214,3 +213,12 @@ SOCIALACCOUNT_PROVIDERS = {
             ],
         }
     }
+
+
+# CELERY CONFIGURATION 
+
+CELERY_BROKER_URL  = 'amqp://admin:mypass@rabbit:5672/myvhost'
+CELERY_RESULT_BACKEND  ='redis//:@redis:6379/0'
+CELERY_ACCEPT_CONTENT = ['application/json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'

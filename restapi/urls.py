@@ -8,6 +8,8 @@ router.register(r'users',views.UserViewSet)
 urlpatterns = [
     # path('Users/',views.UserList.as_view(),name='users-list'),
     # path('UserDetail/<int:pk>',views.UserDetail.as_view(),name='user-detail'),
+
+    path('registration',views.Registration.as_view(),name='registration'),
     path('Login',views.Login.as_view()),
     path('GithubAuth',views.GithubAuth),
 

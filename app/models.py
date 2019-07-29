@@ -2,14 +2,16 @@ from django.db import models
 from django.conf import settings
 # Create your models here.
 from django.contrib.auth.models import (
-    BaseUserManager, AbstractBaseUser,PermissionsMixin
+    BaseUserManager, AbstractBaseUser,PermissionsMixin,_user_has_perm
 )
 from django.utils.translation import gettext_lazy as _
 import uuid
 from datetime import date,timedelta
 from django.contrib.auth.validators import UnicodeUsernameValidator
 from django.core.validators import MaxValueValidator,MinValueValidator 
+
 class MyUserManager(BaseUserManager):
+
     def create_user(self,email,password,**extra_field):
         """
         Creates and saves a User with the given email, date of
@@ -45,13 +47,26 @@ class MyUserManager(BaseUserManager):
 class User(AbstractBaseUser,PermissionsMixin):
 
 
-
+    first_name = models.CharField(max_length=25,verbose_name='Name')
     email = models.EmailField(
         verbose_name='email address',
         max_length=255,
         unique=True,
     )
-   
+    
+    location  = models.CharField(_("Your Location"), max_length=50,default='')
+    phone = models.PositiveIntegerField(unique = True,null=False)
+    picture = models.ImageField(upload_to='users_pic',null=True)
+    money = models.PositiveIntegerField(default=0)
+    
+    is_company = models.BooleanField(
+        _('Company'),
+        default=True,
+        help_text=_('Designates whether You\'re company or not'),
+        
+        )
+
+    is_valid_profile = models.BooleanField(default=True)
     is_active = models.BooleanField(default=True)
     is_admin = models.BooleanField(default=False)
     is_staff = models.BooleanField(
@@ -59,33 +74,26 @@ class User(AbstractBaseUser,PermissionsMixin):
         default=False,
         help_text=_('Designates whether the user can log into this admin site.'),
     )
-    phone = models.PositiveIntegerField(unique = True,validators=[MinValueValidator(10000000),MaxValueValidator(19999999)])
-    picture = models.ImageField(upload_to='users_pic',null=True)
-    money = models.PositiveIntegerField(default=0)
+    
     objects = MyUserManager()
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['phone',]
+    REQUIRED_FIELDS = ['first_name','phone','picture','location','is_company']
 
     def __str__(self):
         return f"MR {self.email} "
 
+    def has_perm(self,perm,obj=None):
+        return _user_has_perm(self, perm, obj)
+    
+    
 
 class Citizien(models.Model):
 
     profile = models.OneToOneField(settings.AUTH_USER_MODEL,related_name='citizien',on_delete=models.CASCADE)
     id_card = models.PositiveIntegerField(unique = True,blank=True,null=True,default=None,validators=[MinValueValidator(10000000),MaxValueValidator(19999999)])
-    first_name=models.CharField(max_length=25)
     last_name=models.CharField(max_length=25)
-
-
-
-class Company(models.Model):
-
-    profile = models.OneToOneField(settings.AUTH_USER_MODEL,related_name='company',on_delete=models.CASCADE)
-    name = models.CharField(max_length=25)
-    rue = models.CharField(max_length='100')
-
+    
 
 
 
