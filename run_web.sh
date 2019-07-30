@@ -2,7 +2,7 @@
 
 
 # wait for PSQL server to start
-cd  web
+#cd  web
 # prepare init migration
 python manage.py makemigrations 
 # migrate db, so we have the latest db schema

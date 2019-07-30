@@ -25,7 +25,7 @@ SECRET_KEY = '_yjgij&eq^ix*_!p81r!i1qht%qn9id-fjo2bos2a5-x=z%62*'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['loanerexchange.com','localhost']
+ALLOWED_HOSTS = ['142.93.98.17','localhost']
 
 
 # Application definition
@@ -217,8 +217,8 @@ SOCIALACCOUNT_PROVIDERS = {
 
 # CELERY CONFIGURATION 
 
-CELERY_BROKER_URL  = 'amqp://admin:mypass@rabbit:5672/myvhost'
-CELERY_RESULT_BACKEND  ='redis//:@redis:6379/0'
+CELERY_BROKER_URL  = 'amqp://admin:mypass@rabbit:5672'
+CELERY_RESULT_BACKEND  ='redis://redis:6379/0'
 CELERY_ACCEPT_CONTENT = ['application/json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
