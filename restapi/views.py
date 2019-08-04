@@ -10,8 +10,10 @@ from rest_framework.response import Response
 from django.contrib.auth import authenticate,login
 from rest_framework.renderers import TemplateHTMLRenderer
 from django.shortcuts import redirect
-from restapi.permissions import IsOwnerOrReadOnly,IsAuthenticated,LoanOwner,hasNoContraints,TrackOwner
-
+from restapi.permissions import IsOwnerOrReadOnly,AuthenticatedAndOwner,LoanOwner,hasNoContraints,TrackOwner
+import jwt
+from django.conf import settings
+from django.core.mail import send_mail
 
 
 
@@ -25,11 +27,11 @@ class UserViewSet(viewsets.ModelViewSet):
     '''
     serializer_class = serializers.UserSerializer
     queryset = User.objects.all()
-    permission_classes = [IsAuthenticated,]
-    permission_classes_by_action = {'retrieve': [IsAuthenticated,IsOwnerOrReadOnly],
+    permission_classes = [AuthenticatedAndOwner,]
+    permission_classes_by_action = {'retrieve': [AuthenticatedAndOwner,IsOwnerOrReadOnly],
                                     'create':[IsOwnerOrReadOnly,permissions.IsAdminUser],
-                                    'update':[IsOwnerOrReadOnly],
-                                    'destroy':[IsOwnerOrReadOnly,hasNoContraints ] # CHECK IF THE USER STILL HAD CONTAINTS BEFORE DELETION 
+                                    'update':[permissions.IsAuthenticated,IsOwnerOrReadOnly],
+                                    'destroy':[permissions.IsAuthenticated,IsOwnerOrReadOnly,hasNoContraints ] # CHECK IF THE USER STILL HAD CONTAINTS BEFORE DELETION 
                                     }
     
     # FILTER PERMISSION DEPEND ON HTTP METHOD
@@ -46,8 +48,7 @@ class UserViewSet(viewsets.ModelViewSet):
 class Registration(generics.CreateAPIView):
 
     serializer_class  = serializers.UserRegistrationSerializer
-    queryset = Citizien.objects.all()
-
+    queryset = User.objects.all()
 
 class Login(mixins.CreateModelMixin, generics.GenericAPIView):
     '''
@@ -66,6 +67,34 @@ class Login(mixins.CreateModelMixin, generics.GenericAPIView):
         user = serializer.validated_data
         login(request,user)
         return Response(status=status.HTTP_202_ACCEPTED)
+
+@decorators.api_view(['POST',])
+def password_reset(request):
+    email = request.data['email']
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist():
+        return Response({'error':'invalid email'})
+    print(user.email)
+    encoded_jwt = jwt.encode({'user_id': user.id}, settings.SECRET_KEY, algorithm=settings.SIMPLE_JWT['ALGORITHM'])
+    print(encoded_jwt)
+    '''
+    send_mail(
+        'Password Reset',
+        f'here is the link : http://localhost:8000/api/password/reset/complete?token={encoded_jwt.decode()}',
+        settings.EMAIL_HOST_USER,
+        [email,]
+    )
+    '''
+    return Response({'ok':'Link has been sent to your email'})
+
+
+@decorators.api_view(['POST',])
+def password_reset_complete(request):
+    serializer = serializers.PasswordChange(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    serializer.save()
+    return Response({'msg':'The user\'s password has been changed'})
 
 
 
@@ -106,7 +135,8 @@ class VerifyYourself(generics.CreateAPIView):
 
 
 class Request(generics.CreateAPIView):
-    permission_classes = [IsAuthenticated,]
+
+    permission_classes = [AuthenticatedAndOwner,]
     serializer_class = serializers.RequestLoanSerializer
     '''
         REQUEST A RANGE OF MONEY FOR SPECIFIEC LENGTH
@@ -123,7 +153,7 @@ class Accept(generics.RetrieveUpdateDestroyAPIView):
     '''
         ACCEPT OR DESTROY A LOAN
     '''
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AuthenticatedAndOwner]
     queryset = Loan.objects.filter(receiver_acceptance=False) # PREVENT USER FROM ACCEPT TWICE THE SAME CONTRAINT
     serializer_class = serializers.GiverLoanSerializer
 
@@ -156,7 +186,7 @@ class LoanDetail(generics.RetrieveAPIView):
 # THIS VIEW DISPLAY LOANS (ACCEPTED || WAITING) THAT WHERE REQUESTED TO THE CURRENT USER
 
 @decorators.api_view(['GET',])
-@decorators.permission_classes([IsAuthenticated])
+@decorators.permission_classes([AuthenticatedAndOwner])
 def Loans(request,loan,loans_type):
     '''
         SEE YOUR HISTORY

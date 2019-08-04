@@ -3,8 +3,11 @@ from app.models import User,Loan,Track,Citizien
 from datetime import datetime
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import make_password
+from django.conf import settings
+import jwt
 
 class CitizienSerializer(serializers.Serializer):
+
     last_name = serializers.CharField(max_length=25,required=False)
     id_card = serializers.IntegerField(required=False)
 
@@ -18,20 +21,24 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     
     class Meta:
         model  = User
-        fields = ['first_name','email','phone','location','is_company','picture','password','is_valid_profile','citizien']
-        read_only_fields  =['is_valid_profile']
+        fields = ['first_name','email','phone','location','picture','password','is_company','citizien']
+        #read_only_fields  =['is_valid_profile']
 
+    def validate_picture(self,picture):
+            if not picture:
+                raise serializers.ValidationError('You must include a Picture OF you')
+            return picture
+    
     def validate_password(self,password):
         return make_password(password)
-    
+
     def create(self,validated_data):
         citizien = validated_data.pop('citizien')
-        if not citizien and validated_data['is_company']==False:
-            raise serializers.ValidationError('User must Have Citizien caracteristics')
-        user=User.objects.create(**validated_data)
+        if len(citizien)!=2 and validated_data['is_company']==False:
+            raise serializers.ValidationError('Complete the citizien informations')
+        user = User.objects.create(**validated_data)
         if validated_data['is_company']==False:
-            citizien['profile'] =user
-            print(citizien)
+            citizien['profile'] = user
             Citizien.objects.create(**citizien)
         return user
         
@@ -42,13 +49,18 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     
-    citizien =  CitizienSerializer()
+    citizien =  CitizienSerializer(read_only=True)
    
     class Meta:
         model = User
-        fields = ['url','first_name','email','location','is_company','picture','money','citizien']
+        fields = ['url','first_name','email','location','is_company','picture','money','password','citizien']
         read_only_fields = ['money','email','is_company']
-        
+        extra_kwargs ={
+            'password':{'write_only':True}
+        }
+    
+    def validate_password(self,password):
+        return make_password(password)
 
 
 
@@ -60,6 +72,33 @@ class UserLoginSerializer(serializers.Serializer):
         style={'input_type': 'password', 'placeholder': 'Password'}
         )
     
+    def validate(self,data):
+        data = super().validate(data)
+        user = authenticate(email=data['email'],password=data['password'])
+        if user is not None:
+            return user
+        raise serializers.ValidationError('Wrong creedentials...')    
+    
+class PasswordChange(serializers.Serializer):
+
+    password = serializers.CharField(max_length=25,required=True)
+    password2 = serializers.CharField(max_length=25,required=True)
+    token = serializers.CharField(max_length=300,required=True)
+
+    def validate(self,data):
+        if data['password'] != data['password2']:
+            raise serializers.ValidationError('password doesn\'t match')
+        return data
+    
+    def save(self):
+        token = self.validated_data['token']
+        try:
+            id = jwt.decode(token,settings.SECRET_KEY , algorithms=['HS256'])['user_id']
+        except:
+            raise serializers.ValidationError('INVALID TOKEN')
+        user = User.objects.get(id=id)
+        user.set_password(self.validated_data['password'])
+        user.save()
 
 # LOAN SERIALIZERS
 class LoanSerializer(serializers.HyperlinkedModelSerializer):

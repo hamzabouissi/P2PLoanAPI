@@ -42,6 +42,7 @@ class MyUserManager(BaseUserManager):
         user.set_password(password)
         user.save(using=self._db)
         return user
+    
 
 
 class User(AbstractBaseUser,PermissionsMixin):
@@ -63,7 +64,6 @@ class User(AbstractBaseUser,PermissionsMixin):
         _('Company'),
         default=True,
         help_text=_('Designates whether You\'re company or not'),
-        
         )
 
     is_valid_profile = models.BooleanField(default=True)
@@ -92,7 +92,7 @@ class Citizien(models.Model):
 
     profile = models.OneToOneField(settings.AUTH_USER_MODEL,related_name='citizien',on_delete=models.CASCADE)
     id_card = models.PositiveIntegerField(unique = True,blank=True,null=True,default=None,validators=[MinValueValidator(10000000),MaxValueValidator(19999999)])
-    last_name=models.CharField(max_length=25)
+    last_name=models.CharField(max_length=25,editable=False)
     
 
 
@@ -148,7 +148,7 @@ class Track(models.Model):
 
     def save(self,*args,**kwargs):
         if self.received == True:
-            # self.final_date = date.today() # REMOVER THIS DURING DEVELOPMENT
+            self.final_date = date.today() # REMOVER THIS DURING DEVELOPMENT
             # WE SHOULD CREATE THE NEXT TRACK WITH CONDITION 
             # THE DATE OF THE LAST TRACK < THE CREATION DATE OF LOAN + LENGTH
             month = self.loan.loaned_at.month + self.loan.length

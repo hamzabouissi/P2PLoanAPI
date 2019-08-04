@@ -19,6 +19,10 @@ from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework.schemas import get_schema_view as rest_schema_view
 
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
     
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
@@ -47,11 +51,18 @@ urlpatterns = [
     
 ]
 urlpatterns = [
-    path('api/', include('restapi.urls')),
-    path('rest-auth/', include('rest_auth.urls')),
-    path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('admin/', admin.site.urls),
+
+
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
+
+    path('api/', include('restapi.urls')),
+    path('api-auth/', include('rest_framework.urls')),
+    #path('rest-auth/', include('rest_auth.urls')),
     path('accounts/', include('allauth.urls')),
+
     path('openapi', rest_schema_view(
             title="Your Project",
             description="API for all things …"

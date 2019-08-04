@@ -32,7 +32,7 @@ class LoanOwner(permissions.BasePermission):
         return obj.giver == request.user  
 
     
-class IsAuthenticated(permissions.BasePermission):
+class AuthenticatedAndOwner(permissions.BasePermission):
     
     def has_permission(self, request,view):
         # Read permissions are allowed to any request,
@@ -40,6 +40,7 @@ class IsAuthenticated(permissions.BasePermission):
         return request.user.is_authenticated and request.user.is_valid_profile
 
 class hasNoContraints(permissions.BasePermission):
+     
      def has_permission(self, request,view):
         # Read permissions are allowed to any request,
         # so we'll always allow GET, HEAD or OPTIONS requests.
