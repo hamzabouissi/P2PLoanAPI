@@ -5,6 +5,10 @@ from django.core.exceptions import ObjectDoesNotExist
 
 
 
+class ReadOnly(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.method in permissions.SAFE_METHODS
+
 
 
 class IsOwnerOrReadOnly(permissions.BasePermission):
@@ -31,13 +35,6 @@ class LoanOwner(permissions.BasePermission):
             return True
         return obj.giver == request.user  
 
-    
-class AuthenticatedAndOwner(permissions.BasePermission):
-    
-    def has_permission(self, request,view):
-        # Read permissions are allowed to any request,
-        # so we'll always allow GET, HEAD or OPTIONS requests.
-        return request.user.is_authenticated and request.user.is_valid_profile
 
 class hasNoContraints(permissions.BasePermission):
      

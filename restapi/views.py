@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from django.contrib.auth import authenticate,login
 from rest_framework.renderers import TemplateHTMLRenderer
 from django.shortcuts import redirect
-from restapi.permissions import IsOwnerOrReadOnly,AuthenticatedAndOwner,LoanOwner,hasNoContraints,TrackOwner
+from restapi.permissions import IsOwnerOrReadOnly,LoanOwner,hasNoContraints,TrackOwner,ReadOnly
 import jwt
 from django.conf import settings
 from django.core.mail import send_mail
@@ -28,15 +28,16 @@ class UserViewSet(viewsets.ModelViewSet):
     '''
     serializer_class = serializers.UserSerializer
     queryset = User.objects.all()
-    permission_classes = [AuthenticatedAndOwner,]
-    permission_classes_by_action = {'retrieve': [AuthenticatedAndOwner,IsOwnerOrReadOnly],
-                                    'create':[IsOwnerOrReadOnly,permissions.IsAdminUser],
+    #permission_classes = [AuthenticatedAndOwner,]
+    permission_classes_by_action = {'retrieve': [ReadOnly],
+                                    'create':[permissions.IsAdminUser],
                                     'update':[permissions.IsAuthenticated,IsOwnerOrReadOnly],
-                                    'destroy':[permissions.IsAuthenticated,IsOwnerOrReadOnly,hasNoContraints ] # CHECK IF THE USER STILL HAD CONTAINTS BEFORE DELETION 
+                                    'destroy':[permissions.IsAuthenticated,IsOwnerOrReadOnly,hasNoContraints ],
+                                    'list':[ReadOnly,] # CHECK IF THE USER STILL HAD CONTAINTS BEFORE DELETION 
                                     }
     
     filter_backends = (filters.DjangoFilterBackend,)
-    filterset_fields = ('location','citizien__id_card')
+    filterset_fields = ('location','citizien__id_card','is_company')
     
     # FILTER PERMISSION DEPEND ON HTTP METHOD
     def get_permissions(self):
@@ -50,6 +51,10 @@ class UserViewSet(viewsets.ModelViewSet):
 
 # AUTHENTICATIONS VIEWS 
 class Registration(generics.CreateAPIView):
+
+    '''
+        USER registration form
+    '''
 
     serializer_class  = serializers.UserRegistrationSerializer
     queryset = User.objects.all()
@@ -70,7 +75,13 @@ class Login(mixins.CreateModelMixin, generics.GenericAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data
         login(request,user)
-        return Response(status=status.HTTP_202_ACCEPTED)
+        try:
+            url = request.GET['next']
+        except KeyError:
+            print('passed')
+            return Response(status=status.HTTP_202_ACCEPTED)
+        return redirect(url)
+
 
 @decorators.api_view(['POST',])
 def password_reset(request):
@@ -104,32 +115,7 @@ def GithubAuth(request):
     return redirect('github_login')
 
 
-class VerifyYourself(generics.CreateAPIView):
 
-    '''
-        A FORM TO VERIFY USER'S IDENTITY 
-
-    '''
-
-    serializer_class = serializers.UserVerify
-    permission_classes = [permissions.IsAuthenticated,]
-
-    def get(self, request, *args, **kwargs):
-        if not request.user.is_valid_profile:
-            return Response('Verify Yourself')  
-        # REDICRECT VERIFIED USER TO PROFILE PAGE
-        return redirect('user-detail',request.user.id)
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        request.user.is_valid_profile=True
-        request.user.save()
-        headers = self.get_success_headers(serializer.data)
-        return redirect('user-detail',request.user.id)
-    
-   
 
 
 # User Functionalities
@@ -138,7 +124,7 @@ class VerifyYourself(generics.CreateAPIView):
 
 class Request(generics.CreateAPIView):
 
-    permission_classes = [AuthenticatedAndOwner,]
+    permission_classes = [permissions.IsAuthenticated,]
     serializer_class = serializers.RequestLoanSerializer
     '''
         REQUEST A RANGE OF MONEY FOR SPECIFIEC LENGTH
@@ -155,7 +141,7 @@ class Accept(generics.RetrieveUpdateDestroyAPIView):
     '''
         ACCEPT OR DESTROY A LOAN
     '''
-    permission_classes = [AuthenticatedAndOwner]
+    permission_classes = [permissions.IsAuthenticated]
     queryset = Loan.objects.filter(receiver_acceptance=False) # PREVENT USER FROM ACCEPT TWICE THE SAME CONTRAINT
 #    serializer_class = serializers.GiverLoanSerializer
     lookup_field = 'pk'
@@ -172,7 +158,7 @@ class Accept(generics.RetrieveUpdateDestroyAPIView):
             serializer_class = serializers.GiverLoanSerializer
 
         return serializer_class
-
+    
     
 
 class LoanDetail(generics.RetrieveAPIView):
@@ -189,7 +175,7 @@ class LoanDetail(generics.RetrieveAPIView):
 # THIS VIEW DISPLAY LOANS (ACCEPTED || WAITING) THAT WHERE REQUESTED TO THE CURRENT USER
 
 @decorators.api_view(['GET',])
-@decorators.permission_classes([AuthenticatedAndOwner])
+@decorators.permission_classes([permissions.IsAuthenticated])
 def Loans(request,loan,loans_type):
     '''
         SEE YOUR HISTORY

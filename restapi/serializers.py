@@ -101,6 +101,7 @@ class PasswordChange(serializers.Serializer):
         user.save()
 
 # LOAN SERIALIZERS
+
 class LoanSerializer(serializers.HyperlinkedModelSerializer):
     tracks = serializers.HyperlinkedRelatedField(
             many=True,
@@ -108,14 +109,11 @@ class LoanSerializer(serializers.HyperlinkedModelSerializer):
             view_name='track-detail'
         )
     accept = serializers.HyperlinkedIdentityField(view_name='accept',lookup_field='pk',read_only=True)
-    
-    def __init__(self,*args,**kwargs):
 
-        super(LoanSerializer, self).__init__(*args, **kwargs)
-        print(args,kwargs)
     class Meta:
         model = Loan
         fields = ['giver','giver_acceptance','receiver','receiver_acceptance','length','amount','description','final_amount','loaned_at','tracks','accept']
+
 
 class GiverLoanSerializer(serializers.HyperlinkedModelSerializer):
     
@@ -133,11 +131,18 @@ class GiverLoanSerializer(serializers.HyperlinkedModelSerializer):
 
 
 class ReceiverAcceptanceSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Loan
         fields = ['receiver_acceptance','giver','giver_acceptance','amount','final_amount','length']
         read_only_fields = ['giver','giver_acceptance','amount','final_amount','length']
     
+
+    def validate(self,validated_data):
+        # PREVENT RECEIVER FROM ACCEPTING A LOAN WHILE GIVER DIDNT ACCEPT IT
+        if self.instance.giver_acceptance != True:
+            raise serializers.ValidationError('The giver still processing This request')
+        return super().validate(validated_data)
 
 class RequestLoanSerializer(serializers.HyperlinkedModelSerializer):
     
