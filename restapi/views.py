@@ -14,6 +14,7 @@ from restapi.permissions import IsOwnerOrReadOnly,AuthenticatedAndOwner,LoanOwne
 import jwt
 from django.conf import settings
 from django.core.mail import send_mail
+from django_filters import rest_framework as filters
 
 
 
@@ -33,6 +34,9 @@ class UserViewSet(viewsets.ModelViewSet):
                                     'update':[permissions.IsAuthenticated,IsOwnerOrReadOnly],
                                     'destroy':[permissions.IsAuthenticated,IsOwnerOrReadOnly,hasNoContraints ] # CHECK IF THE USER STILL HAD CONTAINTS BEFORE DELETION 
                                     }
+    
+    filter_backends = (filters.DjangoFilterBackend,)
+    filterset_fields = ('location','citizien__id_card')
     
     # FILTER PERMISSION DEPEND ON HTTP METHOD
     def get_permissions(self):
@@ -78,14 +82,12 @@ def password_reset(request):
     print(user.email)
     encoded_jwt = jwt.encode({'user_id': user.id}, settings.SECRET_KEY, algorithm=settings.SIMPLE_JWT['ALGORITHM'])
     print(encoded_jwt)
-    '''
     send_mail(
         'Password Reset',
         f'here is the link : http://localhost:8000/api/password/reset/complete?token={encoded_jwt.decode()}',
         settings.EMAIL_HOST_USER,
         [email,]
     )
-    '''
     return Response({'ok':'Link has been sent to your email'})
 
 
@@ -148,29 +150,30 @@ class Request(generics.CreateAPIView):
 
 
 
-# SHOW ALL USER LOANS
+
 class Accept(generics.RetrieveUpdateDestroyAPIView):
     '''
         ACCEPT OR DESTROY A LOAN
     '''
     permission_classes = [AuthenticatedAndOwner]
     queryset = Loan.objects.filter(receiver_acceptance=False) # PREVENT USER FROM ACCEPT TWICE THE SAME CONTRAINT
-    serializer_class = serializers.GiverLoanSerializer
+#    serializer_class = serializers.GiverLoanSerializer
+    lookup_field = 'pk'
 
-    def get_serializer(self, *args, **kwargs):
-        """
-        Return the serializer instance that should be used for validating and
-        deserializing input, and for serializing output.
-        """
+    
+    def get_serializer_class(self):
+
         obj = self.get_object()
+
         if self.request.user == obj.receiver:
            
             serializer_class = serializers.ReceiverAcceptanceSerializer
         else:
-            serializer_class = self.get_serializer_class()
-        kwargs['context'] = self.get_serializer_context()
-        return serializer_class(*args, **kwargs)
+            serializer_class = serializers.GiverLoanSerializer
 
+        return serializer_class
+
+    
 
 class LoanDetail(generics.RetrieveAPIView):
     '''
@@ -201,7 +204,7 @@ def Loans(request,loan,loans_type):
 
 
 
-# TRACKS 
+# PAYMENT 
 class TrackDetail(generics.RetrieveUpdateAPIView):
     '''
         THIS VIEW TO TRACK LOAN HISTORY

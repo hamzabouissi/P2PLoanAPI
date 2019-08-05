@@ -107,10 +107,15 @@ class LoanSerializer(serializers.HyperlinkedModelSerializer):
             read_only=True,
             view_name='track-detail'
         )
+    accept = serializers.HyperlinkedIdentityField(view_name='accept',lookup_field='pk',read_only=True)
+    
+    def __init__(self,*args,**kwargs):
+
+        super(LoanSerializer, self).__init__(*args, **kwargs)
+        print(args,kwargs)
     class Meta:
         model = Loan
-        fields = ['giver','giver_acceptance','receiver','receiver_acceptance','length','amount','description','final_amount','loaned_at','tracks']
-        
+        fields = ['giver','giver_acceptance','receiver','receiver_acceptance','length','amount','description','final_amount','loaned_at','tracks','accept']
 
 class GiverLoanSerializer(serializers.HyperlinkedModelSerializer):
     
@@ -132,6 +137,7 @@ class ReceiverAcceptanceSerializer(serializers.ModelSerializer):
         model = Loan
         fields = ['receiver_acceptance','giver','giver_acceptance','amount','final_amount','length']
         read_only_fields = ['giver','giver_acceptance','amount','final_amount','length']
+    
 
 class RequestLoanSerializer(serializers.HyperlinkedModelSerializer):
     

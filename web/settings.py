@@ -33,13 +33,11 @@ ALLOWED_HOSTS = ['142.93.98.17','localhost']
 
 INSTALLED_APPS = [
     'restapi',
-    'drf_yasg', # Swagger 
     'app.apps.AppConfig',
-
+    'django_filters', # filter Views
     'rest_framework',
-    # TOKEN AUTHENTICATION
-    #'rest_framework.authtoken', 
-    #'rest_auth',
+    'drf_yasg',
+    
     # DEFAULT APPS
     'django.contrib.admin',
     'django.contrib.auth',
@@ -233,6 +231,8 @@ AUTHENTICATION_BACKENDS = (
 REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
+    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
+
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
         'rest_framework.renderers.BrowsableAPIRenderer',
