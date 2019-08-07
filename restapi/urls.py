@@ -24,9 +24,9 @@ urlpatterns = [
 
 
     
-    path('Loan/<str:pk>',views.LoanDetail.as_view(),name='loan-detail'),
+    path('Loan/<str:uuid>',views.LoanDetail.as_view(),name='loan-detail'),
     path('request',views.Request.as_view(),name='request-loan'),
-    path('accept/<str:pk>',views.Accept.as_view(),name='accept'),
+    path('accept/<uuid:uuid>',views.Accept.as_view(),name='accept'),
     re_path(r'^(?P<loan>(requested|received))/(?P<loans_type>(accepted|waiting))/$',views.Loans,name='Loans'),
     path('track/<int:pk>',views.TrackDetail.as_view(),name='track-detail'),
 ] + router.urls

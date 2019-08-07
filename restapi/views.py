@@ -144,7 +144,7 @@ class Accept(generics.RetrieveUpdateDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     queryset = Loan.objects.filter(receiver_acceptance=False) # PREVENT USER FROM ACCEPT TWICE THE SAME CONTRAINT
 #    serializer_class = serializers.GiverLoanSerializer
-    lookup_field = 'pk'
+    lookup_field = 'uuid'
 
     
     def get_serializer_class(self):
@@ -167,8 +167,7 @@ class LoanDetail(generics.RetrieveAPIView):
     '''
     queryset = Loan.objects.all()
     serializer_class = serializers.LoanSerializer
-
-
+    lookup_field = "uuid"
 
 
 
@@ -198,3 +197,4 @@ class TrackDetail(generics.RetrieveUpdateAPIView):
     serializer_class = serializers.TrackSerializer
     queryset  = Track.objects.all()
     permission_classes = [TrackOwner,]
+    lookup_field = 'pk'

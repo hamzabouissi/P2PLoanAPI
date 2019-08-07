@@ -17,17 +17,19 @@ class CitizienSerializer(serializers.Serializer):
 class UserRegistrationSerializer(serializers.ModelSerializer):
 
     password  = serializers.CharField(max_length=128, write_only=True, required=True)
-    citizien =  CitizienSerializer()
+    citizien =  CitizienSerializer(required=False)
     
     class Meta:
         model  = User
         fields = ['first_name','email','phone','location','picture','password','is_company','citizien']
         #read_only_fields  =['is_valid_profile']
-
+    
+    '''
     def validate_picture(self,picture):
             if not picture:
                 raise serializers.ValidationError('You must include a Picture OF you')
             return picture
+    '''
     
     def validate_password(self,password):
         return make_password(password)
@@ -106,14 +108,16 @@ class LoanSerializer(serializers.HyperlinkedModelSerializer):
     tracks = serializers.HyperlinkedRelatedField(
             many=True,
             read_only=True,
-            view_name='track-detail'
+            view_name='track-detail',
         )
-    accept = serializers.HyperlinkedIdentityField(view_name='accept',lookup_field='pk',read_only=True)
+    accept = serializers.HyperlinkedIdentityField(view_name='accept',lookup_field='uuid',read_only=True)
 
     class Meta:
         model = Loan
         fields = ['giver','giver_acceptance','receiver','receiver_acceptance','length','amount','description','final_amount','loaned_at','tracks','accept']
-
+        extra_kwargs={
+            "url":{'lookup_field':"uuid"}
+        }
 
 class GiverLoanSerializer(serializers.HyperlinkedModelSerializer):
     
@@ -121,13 +125,17 @@ class GiverLoanSerializer(serializers.HyperlinkedModelSerializer):
         model = Loan
         fields = ['url','giver_acceptance','receiver','length','amount','description','final_amount','receiver_acceptance']
         read_only_fields = ['receiver','length','description','receiver_acceptance']
-        
+        extra_kwargs={
+            "url":{'lookup_field':"uuid"}
+        }
+    
         
     def validate(self,data):
         giver = self.__dict__['_args'][0].giver
         if data['amount']>=giver.money:
             raise serializers.ValidationError('Current money not enough,recharge your account!')
         return data
+    
 
 
 class ReceiverAcceptanceSerializer(serializers.ModelSerializer):
@@ -136,7 +144,7 @@ class ReceiverAcceptanceSerializer(serializers.ModelSerializer):
         model = Loan
         fields = ['receiver_acceptance','giver','giver_acceptance','amount','final_amount','length']
         read_only_fields = ['giver','giver_acceptance','amount','final_amount','length']
-    
+
 
     def validate(self,validated_data):
         # PREVENT RECEIVER FROM ACCEPTING A LOAN WHILE GIVER DIDNT ACCEPT IT
@@ -151,7 +159,9 @@ class RequestLoanSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Loan
         fields = ['url','giver','length','amount','description','receiver','final_amount']
-
+        extra_kwargs = {
+            "url":{'lookup_field':"uuid"}
+        }
 
 
 class TrackSerializer(serializers.HyperlinkedModelSerializer):
@@ -159,6 +169,9 @@ class TrackSerializer(serializers.HyperlinkedModelSerializer):
         model = Track
         fields = ['loan','expected_date','final_date','money','received']
         read_only_fields = ['loan','expected_date','final_date']
+        extra_kwargs = {
+            "loan":{'lookup_field':"uuid"}
+        }
 
 class UserVerify(serializers.ModelSerializer):
     profile = serializers.HiddenField(default=serializers.CurrentUserDefault())

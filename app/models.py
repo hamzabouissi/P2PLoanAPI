@@ -100,7 +100,7 @@ class Citizien(models.Model):
 
 
 class Loan(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    uuid = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
     giver = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='loan_giver', on_delete=models.CASCADE)
     receiver = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='loan_receiver', on_delete=models.CASCADE)
     description = models.TextField(max_length=200,default='')
@@ -138,6 +138,9 @@ class Loan(models.Model):
 
     def create_new_track(self):
         Track.objects.create(loan=self,expected_date=self.loaned_at+timedelta(30))
+
+    def __str__(self):
+        return f"{self.uuid}"
     
 class Track(models.Model):
     loan = models.ForeignKey('Loan',related_name='tracks',on_delete=models.CASCADE)
