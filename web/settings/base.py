@@ -161,12 +161,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 STATIC_URL = '/static/'
-STATIC_ROOT = ''
+STATIC_ROOT = '/app_static/'
 STATICFILES_DIRS = [
     BASE_DIR.child("static"),
 ]
 MEDIA_ROOT = BASE_DIR.child("media")
-MEDIA_URL = '/MEDIA/'
+MEDIA_URL = '/media/'
 
 # DJANGO EMAIL SETTINGS
 EMAIL_USE_TLS = True

@@ -3,7 +3,7 @@ from .base import *
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['142.93.98.17','localhost']
+ALLOWED_HOSTS = ['142.93.98.17','localhost','p2ploan.taysircloud.com']
 
 
 INSTALLED_APPS +=['corsheaders',]
