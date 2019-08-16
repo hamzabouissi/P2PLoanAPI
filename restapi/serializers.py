@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from app.models import User,Loan,Track,Citizien
+from app.models import User,Loan,Track,Citizien,Notification
 from datetime import datetime
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import make_password
@@ -35,7 +35,11 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return make_password(password)
 
     def create(self,validated_data):
-        citizien = validated_data.pop('citizien')
+        
+        try:
+            citizien = validated_data.pop('citizien')
+        except KeyError:
+            citizien = {}
         if len(citizien)!=2 and validated_data['is_company']==False:
             raise serializers.ValidationError('Complete the citizien informations')
         user = User.objects.create(**validated_data)
@@ -52,7 +56,8 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     
     citizien =  CitizienSerializer(read_only=True)
-   
+    #notif = serializers.HyperlinkedRelatedField(many=True,read_only=True,view_name='notif-detail')
+
     class Meta:
         model = User
         fields = ['url','first_name','email','location','is_company','picture','money','password','citizien']
@@ -114,7 +119,7 @@ class LoanSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = Loan
-        fields = ['giver','giver_acceptance','receiver','receiver_acceptance','length','amount','description','final_amount','loaned_at','tracks','accept']
+        fields = ['giver','giver_acceptance','receiver','receiver_acceptance','length','amount','description','loaned_at','tracks','accept']
         extra_kwargs={
             "url":{'lookup_field':"uuid"}
         }
@@ -123,18 +128,11 @@ class GiverLoanSerializer(serializers.HyperlinkedModelSerializer):
     
     class Meta:
         model = Loan
-        fields = ['url','giver_acceptance','receiver','length','amount','description','final_amount','receiver_acceptance']
+        fields = ['url','giver_acceptance','receiver','length','amount','description','receiver_acceptance']
         read_only_fields = ['receiver','length','description','receiver_acceptance']
         extra_kwargs={
             "url":{'lookup_field':"uuid"}
         }
-    
-        
-    def validate(self,data):
-        giver = self.__dict__['_args'][0].giver
-        if data['amount']>=giver.money:
-            raise serializers.ValidationError('Current money not enough,recharge your account!')
-        return data
     
 
 
@@ -142,26 +140,44 @@ class ReceiverAcceptanceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Loan
-        fields = ['receiver_acceptance','giver','giver_acceptance','amount','final_amount','length']
-        read_only_fields = ['giver','giver_acceptance','amount','final_amount','length']
+        fields = ['receiver_acceptance','giver','giver_acceptance','amount','length']
+        read_only_fields = ['giver','giver_acceptance','amount','length']
 
 
     def validate(self,validated_data):
         # PREVENT RECEIVER FROM ACCEPTING A LOAN WHILE GIVER DIDNT ACCEPT IT
+        if not validated_data['receiver_acceptance']:
+            raise serializers.ValidationError('You should accept or ignore!')
+
         if self.instance.giver_acceptance != True:
             raise serializers.ValidationError('The giver still processing This request')
         return super().validate(validated_data)
 
+
+
 class RequestLoanSerializer(serializers.HyperlinkedModelSerializer):
     
-    receiver = serializers.HiddenField(default=serializers.CurrentUserDefault())
     
     class Meta:
         model = Loan
-        fields = ['url','giver','length','amount','description','receiver','final_amount']
+        fields = ['url','giver','length','amount','description','receiver','giver']
         extra_kwargs = {
             "url":{'lookup_field':"uuid"}
         }
+    def validate(self,validated_data):
+        user = self.context['request'].user
+        giver = validated_data['giver']
+        receiver = validated_data['receiver']
+
+        if user not in [giver,receiver] or  [user]*2==[giver,receiver] : # Verify The Current User in request or he act as receiver and giver At the same time
+            raise serializers.ValidationError('Dont fool Us')
+
+        if user == giver:
+            validated_data['giver_acceptance'] = True
+        
+        return validated_data
+
+
 
 
 class TrackSerializer(serializers.HyperlinkedModelSerializer):
@@ -173,17 +189,10 @@ class TrackSerializer(serializers.HyperlinkedModelSerializer):
             "loan":{'lookup_field':"uuid"}
         }
 
-class UserVerify(serializers.ModelSerializer):
-    profile = serializers.HiddenField(default=serializers.CurrentUserDefault())
-    
-    class Meta:
-        model = Citizien
-        fields = ['id_card','last_name','profile']
 
-    def validate(self,data):
-        if len(str(data['id_card']))!=8:
-            raise serializers.ValidationError('INVALID ID CARD')
-        if Citizien.objects.filter(id_card=data['id_card']).exists():
-            raise serializers.ValidationError('THIS ID CARD ALREADY EXISTS')
-        return data
-    
+
+class NotifSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Notification
+        fields=['receiver','description','notification_type','creation_date','item']

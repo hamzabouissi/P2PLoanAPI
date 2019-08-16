@@ -106,38 +106,34 @@ class Loan(models.Model):
     description = models.TextField(max_length=200,default='')
     length = models.PositiveSmallIntegerField()
     amount = models.PositiveIntegerField(blank=False)
-    #accepted = models.BooleanField(default=False)
     giver_acceptance = models.BooleanField(default=False)
     receiver_acceptance = models.BooleanField(
         default=False,
         help_text=_('Don\'t check this until your receive your money '),
         )
 
-    final_amount = models.PositiveIntegerField(default=0) # THIS FIELD DESCRIBE FINAL AMOUNT TO RETURN TO THE BORROWER
     
     loaned_at = models.DateField(null=True,blank=True)        
 
     def save(self, *args, **kwargs):
         # CHECK USER GIVER MONEY
+        
         if self.giver_acceptance and self.receiver_acceptance and self.giver.money>=self.amount:
             
-            self.exchange()
             self.loaned_at = date.today()
+            super().save(*args,**kwargs)
             self.create_new_track()
-            
+            return 
+        super().save(*args,**kwargs)    
 
-        # Call the "real" save() method.
-        super().save(*args,**kwargs)
         
-    # TRANSER MONEY
-    def exchange(self,*args,**kwargs):
-        self.giver.money -= self.amount
-        self.receiver.money += self.amount
-        self.giver.save()
-        self.receiver.save()
+    
 
     def create_new_track(self):
-        Track.objects.create(loan=self,expected_date=self.loaned_at+timedelta(30))
+        amount = self.amount / self.length
+        Track.objects.create(loan=self,expected_date=self.loaned_at+timedelta(30),money=amount)
+
+    
 
     def __str__(self):
         return f"{self.uuid}"
@@ -150,18 +146,18 @@ class Track(models.Model):
     received = models.BooleanField(default=False)
 
     def save(self,*args,**kwargs):
+        super().save(*args,**kwargs)
         if self.received == True:
-            self.final_date = date.today() # REMOVER THIS DURING DEVELOPMENT
+            self.final_date = date.today() 
             # WE SHOULD CREATE THE NEXT TRACK WITH CONDITION 
             # THE DATE OF THE LAST TRACK < THE CREATION DATE OF LOAN + LENGTH
             month = self.loan.loaned_at.month + self.loan.length
             if self.expected_date.month < month :
                 self.create_new_track()
-        super().save(*args,**kwargs)
 
 
     def create_new_track(self):
-        Track.objects.create(loan=self.loan,expected_date=self.expected_date+timedelta(30))
+        Track.objects.create(loan=self.loan,expected_date=self.expected_date+timedelta(30),money=self.money)
 
     def __str__(self):
         msg = f'This Bill shoud be payed at {self.expected_date}'
@@ -169,3 +165,15 @@ class Track(models.Model):
             delay = self.final_date - self.expected_date
             msg = f"Received amount = {self.money} at {self.final_date} with delay {delay}"
         return msg
+
+class Notification(models.Model):
+
+    receiver = models.ForeignKey(settings.AUTH_USER_MODEL,related_name='notif',on_delete=models.CASCADE)
+    description = models.TextField(max_length=25)
+    notification_type = models.CharField(max_length=25)
+    item = models.URLField(blank=True)
+    creation_date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        
+        return self.notification_type

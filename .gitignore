@@ -1,2 +1,6 @@
 .vscode
 secrets.json
+Scripts
+lib
+include
+tcl

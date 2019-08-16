@@ -1,8 +1,8 @@
 from django.shortcuts import render
 
 # Create your views here.
-from rest_framework import viewsets,mixins,generics, permissions,status,decorators
-from app.models import User,Loan,Track,Citizien
+from rest_framework import viewsets,mixins,generics, permissions,status,decorators,parsers
+from app.models import User,Loan,Track,Citizien,Notification
 from restapi import serializers 
 from rest_framework.views import APIView
 from rest_framework.renderers import TemplateHTMLRenderer
@@ -15,6 +15,7 @@ import jwt
 from django.conf import settings
 from django.core.mail import send_mail
 from django_filters import rest_framework as filters
+from django.db.models import Q
 
 
 
@@ -28,7 +29,6 @@ class UserViewSet(viewsets.ModelViewSet):
     '''
     serializer_class = serializers.UserSerializer
     queryset = User.objects.all()
-    #permission_classes = [AuthenticatedAndOwner,]
     permission_classes_by_action = {'retrieve': [ReadOnly],
                                     'create':[permissions.IsAdminUser],
                                     'update':[permissions.IsAuthenticated,IsOwnerOrReadOnly],
@@ -55,7 +55,7 @@ class Registration(generics.CreateAPIView):
     '''
         USER registration form
     '''
-
+    parser_class = (parsers.FileUploadParser,parsers.JSONParser)
     serializer_class  = serializers.UserRegistrationSerializer
     queryset = User.objects.all()
 
@@ -78,7 +78,6 @@ class Login(mixins.CreateModelMixin, generics.GenericAPIView):
         try:
             url = request.GET['next']
         except KeyError:
-            print('passed')
             return Response(status=status.HTTP_202_ACCEPTED)
         return redirect(url)
 
@@ -90,29 +89,24 @@ def password_reset(request):
         user = User.objects.get(email=email)
     except User.DoesNotExist():
         return Response({'error':'invalid email'})
-    print(user.email)
     encoded_jwt = jwt.encode({'user_id': user.id}, settings.SECRET_KEY, algorithm=settings.SIMPLE_JWT['ALGORITHM'])
-    print(encoded_jwt)
+    # Make it Async
     send_mail(
         'Password Reset',
-        f'here is the link : http://localhost:8000/api/password/reset/complete?token={encoded_jwt.decode()}',
+        f'here is the link : http://p2ploan.taysircloud.com/api/password/reset/complete?token={encoded_jwt.decode()}',
         settings.EMAIL_HOST_USER,
         [email,]
     )
     return Response({'ok':'Link has been sent to your email'})
 
 
-@decorators.api_view(['POST',])
+@decorators.api_view(['POST'])
 def password_reset_complete(request):
     serializer = serializers.PasswordChange(data=request.data)
     serializer.is_valid(raise_exception=True)
     serializer.save()
     return Response({'msg':'The user\'s password has been changed'})
 
-
-
-def GithubAuth(request):
-    return redirect('github_login')
 
 
 
@@ -127,7 +121,7 @@ class Request(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated,]
     serializer_class = serializers.RequestLoanSerializer
     '''
-        REQUEST A RANGE OF MONEY FOR SPECIFIEC LENGTH
+        REQUEST A RANGE OF MONEY FOR SPECIFIEC LENGTH OR Send A Request to borrow 
     '''
     def perform_create(self,serializer):
         serializer.receiver = self.request.user
@@ -143,10 +137,10 @@ class Accept(generics.RetrieveUpdateDestroyAPIView):
     '''
     permission_classes = [permissions.IsAuthenticated]
     queryset = Loan.objects.filter(receiver_acceptance=False) # PREVENT USER FROM ACCEPT TWICE THE SAME CONTRAINT
-#    serializer_class = serializers.GiverLoanSerializer
+    serializer_class = serializers.GiverLoanSerializer
     lookup_field = 'uuid'
 
-    
+    '''
     def get_serializer_class(self):
 
         obj = self.get_object()
@@ -158,7 +152,7 @@ class Accept(generics.RetrieveUpdateDestroyAPIView):
             serializer_class = serializers.GiverLoanSerializer
 
         return serializer_class
-    
+    '''
     
 
 class LoanDetail(generics.RetrieveAPIView):
@@ -173,21 +167,16 @@ class LoanDetail(generics.RetrieveAPIView):
 
 # THIS VIEW DISPLAY LOANS (ACCEPTED || WAITING) THAT WHERE REQUESTED TO THE CURRENT USER
 
-@decorators.api_view(['GET',])
-@decorators.permission_classes([permissions.IsAuthenticated])
-def Loans(request,loan,loans_type):
-    '''
-        SEE YOUR HISTORY
-    '''
-    state = {'accepted':True,'waiting':False}
-    if loan=='requested':
-        serializer = serializers.RequestLoanSerializer(request.user.loan_receiver.filter(giver_acceptance=state[loans_type]),many=True,context={'request':request})
-    else:
-        serializer = serializers.GiverLoanSerializer(request.user.loan_giver.filter(receiver_acceptance=state[loans_type],giver_acceptance=state[loans_type]),many=True,context={'request':request})
-    return Response(serializer.data)
 
+class Loans(generics.ListAPIView):
 
-
+    serializer_class = serializers.LoanSerializer
+    permissions = [permissions.IsAuthenticated,]
+    filter_backends = (filters.DjangoFilterBackend,)
+    filterset_fields = ('giver_acceptance','receiver_acceptance','receiver','giver')
+    
+    def get_queryset(self) :
+        return Loan.objects.filter(Q(giver=self.request.user)| Q(receiver=self.request.user)).prefetch_related('tracks')
 
 # PAYMENT 
 class TrackDetail(generics.RetrieveUpdateAPIView):
@@ -198,3 +187,32 @@ class TrackDetail(generics.RetrieveUpdateAPIView):
     queryset  = Track.objects.all()
     permission_classes = [TrackOwner,]
     lookup_field = 'pk'
+
+
+class NotifList(generics.ListAPIView):
+    '''
+        THIS VIEW TO TRACK LOAN HISTORY
+    '''
+    serializer_class = serializers.NotifSerializer
+
+    
+    def get_queryset(self):
+        return Notification.objects.filter(receiver=self.request.user)
+        
+
+class NotifDetail(generics.RetrieveAPIView):
+    '''
+        THIS VIEW TO TRACK LOAN HISTORY
+    '''
+    serializer_class = serializers.NotifSerializer
+    queryset  = Notification.objects.all()
+    #permission_classes = [TrackOwner,]
+    lookup_field = 'pk'
+
+def Page404(request,exception):
+    return Response({'400':"We couldn't find Your search "},status=status.HTTP_400_BAD_REQUEST)
+
+def Page500(request):
+    
+    return render(request,'error/500.htm')
+

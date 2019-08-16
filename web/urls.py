@@ -40,6 +40,9 @@ schema_view = get_schema_view(
 
 
 
+handler404 = 'restapi.views.Page404'
+handler500 = 'restapi.views.Page500'
+
 
 
 urlpatterns = [
