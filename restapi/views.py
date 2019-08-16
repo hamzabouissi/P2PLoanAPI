@@ -126,33 +126,42 @@ class Request(generics.CreateAPIView):
     def perform_create(self,serializer):
         serializer.receiver = self.request.user
         super().perform_create(serializer)
+    
 
 
 
 
+class Accept(APIView):
 
-class Accept(generics.RetrieveUpdateDestroyAPIView):
-    '''
-        ACCEPT OR DESTROY A LOAN
-    '''
-    permission_classes = [permissions.IsAuthenticated]
-    queryset = Loan.objects.filter(receiver_acceptance=False) # PREVENT USER FROM ACCEPT TWICE THE SAME CONTRAINT
-    serializer_class = serializers.GiverLoanSerializer
-    lookup_field = 'uuid'
+    permission_classes = [permissions.IsAuthenticated,LoanOwner]
+    serializer_class = serializers.Accept
 
-    '''
-    def get_serializer_class(self):
-
-        obj = self.get_object()
-
-        if self.request.user == obj.receiver:
-           
-            serializer_class = serializers.ReceiverAcceptanceSerializer
+    def post(self,request,*args,**kwargs):
+        Loan_uuid=kwargs['Loan_uuid']
+        user = request.user
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        try:
+            loan = Loan.objects.get(uuid=Loan_uuid)
+        except Loan.DoesNotExist():
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        if user == loan.giver:
+            try:
+                loan.giver_acceptance = data['giver_acceptance']
+            except KeyError:
+                return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
         else:
-            serializer_class = serializers.GiverLoanSerializer
+            try:
+                loan.receiver_acceptance = data['receiver_acceptance']
+            except KeyError:
+                return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
+        loan.save()
+        return Response(status=status.HTTP_200_OK)
 
-        return serializer_class
-    '''
+
+
+    
     
 
 class LoanDetail(generics.RetrieveAPIView):
@@ -164,7 +173,6 @@ class LoanDetail(generics.RetrieveAPIView):
     lookup_field = "uuid"
 
 
-
 # THIS VIEW DISPLAY LOANS (ACCEPTED || WAITING) THAT WHERE REQUESTED TO THE CURRENT USER
 
 
@@ -173,10 +181,20 @@ class Loans(generics.ListAPIView):
     serializer_class = serializers.LoanSerializer
     permissions = [permissions.IsAuthenticated,]
     filter_backends = (filters.DjangoFilterBackend,)
-    filterset_fields = ('giver_acceptance','receiver_acceptance','receiver','giver')
+    filterset_fields = ('giver_acceptance','receiver_acceptance')
     
     def get_queryset(self) :
+        requested=None
+        try:
+            requested = self.request.GET['requested']
+        except KeyError:
+            pass
+        if requested=='true':
+            return Loan.objects.filter(giver=self.request.user).prefetch_related('tracks')
+        elif requested=='false':
+            return Loan.objects.filter(receiver=self.request.user).prefetch_related('tracks')
         return Loan.objects.filter(Q(giver=self.request.user)| Q(receiver=self.request.user)).prefetch_related('tracks')
+
 
 # PAYMENT 
 class TrackDetail(generics.RetrieveUpdateAPIView):

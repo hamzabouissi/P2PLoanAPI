@@ -124,35 +124,11 @@ class LoanSerializer(serializers.HyperlinkedModelSerializer):
             "url":{'lookup_field':"uuid"}
         }
 
-class GiverLoanSerializer(serializers.HyperlinkedModelSerializer):
-    
-    class Meta:
-        model = Loan
-        fields = ['url','giver_acceptance','receiver','length','amount','description','receiver_acceptance']
-        read_only_fields = ['receiver','length','description','receiver_acceptance']
-        extra_kwargs={
-            "url":{'lookup_field':"uuid"}
-        }
-    
-
-
-class ReceiverAcceptanceSerializer(serializers.ModelSerializer):
+class Accept(serializers.ModelSerializer):
 
     class Meta:
         model = Loan
-        fields = ['receiver_acceptance','giver','giver_acceptance','amount','length']
-        read_only_fields = ['giver','giver_acceptance','amount','length']
-
-
-    def validate(self,validated_data):
-        # PREVENT RECEIVER FROM ACCEPTING A LOAN WHILE GIVER DIDNT ACCEPT IT
-        if not validated_data['receiver_acceptance']:
-            raise serializers.ValidationError('You should accept or ignore!')
-
-        if self.instance.giver_acceptance != True:
-            raise serializers.ValidationError('The giver still processing This request')
-        return super().validate(validated_data)
-
+        fields = ['receiver_acceptance','giver_acceptance']
 
 
 class RequestLoanSerializer(serializers.HyperlinkedModelSerializer):

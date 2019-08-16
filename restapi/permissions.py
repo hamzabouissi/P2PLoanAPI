@@ -33,7 +33,7 @@ class LoanOwner(permissions.BasePermission):
         # so we'll always allow GET, HEAD or OPTIONS requests.
         if request.method in permissions.SAFE_METHODS:
             return True
-        return obj.giver == request.user  
+        return request.user in [obj.giver,obj.receiver]
 
 
 class hasNoContraints(permissions.BasePermission):

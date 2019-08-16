@@ -25,7 +25,7 @@ urlpatterns = [
     
     path('Loan/<str:uuid>',views.LoanDetail.as_view(),name='loan-detail'),
     path('request/',views.Request.as_view(),name='request-loan'),
-    path('accept/<uuid:uuid>',views.Accept.as_view(),name='accept'),
+    path('accept/<uuid:Loan_uuid>',views.Accept.as_view(),name='accept'),
     path('Loan/',views.Loans.as_view(),name='Loan'),
     path('track/<int:pk>',views.TrackDetail.as_view(),name='track-detail'),
     path('notifs/',views.NotifList.as_view(),name='notif-list'),
