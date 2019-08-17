@@ -58,7 +58,6 @@ class User(AbstractBaseUser,PermissionsMixin):
     location  = models.CharField(_("Your Location"), max_length=50,default='')
     phone = models.PositiveIntegerField(unique = True,null=False)
     picture = models.ImageField(upload_to='users_pic',null=True)
-    money = models.PositiveIntegerField(default=0)
     
     is_company = models.BooleanField(
         _('Company'),
@@ -118,7 +117,7 @@ class Loan(models.Model):
     def save(self, *args, **kwargs):
         # CHECK USER GIVER MONEY
         
-        if self.giver_acceptance and self.receiver_acceptance and self.giver.money>=self.amount:
+        if self.giver_acceptance and self.receiver_acceptance:
             
             self.loaned_at = date.today()
             super().save(*args,**kwargs)
@@ -146,15 +145,18 @@ class Track(models.Model):
     received = models.BooleanField(default=False)
 
     def save(self,*args,**kwargs):
-        super().save(*args,**kwargs)
+
         if self.received == True:
             self.final_date = date.today() 
+            super().save(*args,**kwargs)
             # WE SHOULD CREATE THE NEXT TRACK WITH CONDITION 
             # THE DATE OF THE LAST TRACK < THE CREATION DATE OF LOAN + LENGTH
             month = self.loan.loaned_at.month + self.loan.length
+
             if self.expected_date.month < month :
                 self.create_new_track()
-
+            return
+        super().save(*args,**kwargs)
 
     def create_new_track(self):
         Track.objects.create(loan=self.loan,expected_date=self.expected_date+timedelta(30),money=self.money)

@@ -115,20 +115,13 @@ class LoanSerializer(serializers.HyperlinkedModelSerializer):
             read_only=True,
             view_name='track-detail',
         )
-    accept = serializers.HyperlinkedIdentityField(view_name='accept',lookup_field='uuid',read_only=True)
 
     class Meta:
         model = Loan
-        fields = ['giver','giver_acceptance','receiver','receiver_acceptance','length','amount','description','loaned_at','tracks','accept']
+        fields = ['giver','giver_acceptance','receiver','receiver_acceptance','length','amount','description','loaned_at','tracks']
         extra_kwargs={
             "url":{'lookup_field':"uuid"}
-        }
-
-class Accept(serializers.ModelSerializer):
-
-    class Meta:
-        model = Loan
-        fields = ['receiver_acceptance','giver_acceptance']
+        }   
 
 
 class RequestLoanSerializer(serializers.HyperlinkedModelSerializer):

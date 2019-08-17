@@ -16,6 +16,7 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django_filters import rest_framework as filters
 from django.db.models import Q
+from django.core.exceptions import ObjectDoesNotExist
 
 
 
@@ -87,7 +88,7 @@ def password_reset(request):
     email = request.data['email']
     try:
         user = User.objects.get(email=email)
-    except User.DoesNotExist():
+    except ObjectDoesNotExist:
         return Response({'error':'invalid email'})
     encoded_jwt = jwt.encode({'user_id': user.id}, settings.SECRET_KEY, algorithm=settings.SIMPLE_JWT['ALGORITHM'])
     # Make it Async
@@ -134,28 +135,24 @@ class Request(generics.CreateAPIView):
 class Accept(APIView):
 
     permission_classes = [permissions.IsAuthenticated,LoanOwner]
-    serializer_class = serializers.Accept
 
-    def post(self,request,*args,**kwargs):
+    def get(self,request,*args,**kwargs):
         Loan_uuid=kwargs['Loan_uuid']
         user = request.user
-        serializer = self.serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
         try:
             loan = Loan.objects.get(uuid=Loan_uuid)
-        except Loan.DoesNotExist():
+        except ObjectDoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if loan.receiver_acceptance:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
         if user == loan.giver:
-            try:
-                loan.giver_acceptance = data['giver_acceptance']
-            except KeyError:
-                return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
+            loan.giver_acceptance = True
         else:
-            try:
-                loan.receiver_acceptance = data['receiver_acceptance']
-            except KeyError:
-                return Response(status=status.HTTP_406_NOT_ACCEPTABLE)
+            if not loan.giver_acceptance:
+                return Response({'error':"the borrower still processing the loan"},status=status.HTTP_400_BAD_REQUEST)
+            loan.receiver_acceptance = True
         loan.save()
         return Response(status=status.HTTP_200_OK)
 
