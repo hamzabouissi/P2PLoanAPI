@@ -23,13 +23,13 @@ def create_notif(receiver,type,desc,url=None):
 # @receiver(post_save, sender=Track)
 def notify_user(sender, instance, **kwargs):
     if instance.received:
-        account_sid = 'AC42027c436d422a348e2a58d339c05e39'
-        auth_token = '8c2905e74b9ed8165fdd3e5401e23be3'
+        account_sid = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+        auth_token = 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
         client = Client(account_sid, auth_token)
 
         client.messages.create(
                                 body='Thanks for paying Your Payment ',
-                                from_='+18652902955',
+                                from_='+xxxxxx',
                                 to='+216' + str(instance.loan.receiver.phone)
                                 )
 
